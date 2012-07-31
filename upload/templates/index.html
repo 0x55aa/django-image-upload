@@ -188,36 +188,57 @@
 <script src="/static/jQuery-File-Upload/js/jquery.fileupload-ui.js"></script>
 <!-- The localization script -->
 <script src="/static/jQuery-File-Upload/js/locale.js"></script>
+<!-- The XDomainRequest Transport is included for cross-domain file deletion for IE8+ -->
+<!--[if gte IE 8]><script src="/static/jQuery-File-Upload/js/cors/jquery.xdr-transport.js"></script><![endif]-->
 <!-- The main application script -->
-  <script type="text/javascript">
-  $(function () {
+<script type="text/javascript">
+$(function () {
     'use strict';
-
     // Initialize the jQuery File Upload widget:
     $('#fileupload').fileupload();
-
-    // Enable iframe cross-domain access via redirect option:
-    $('#fileupload').fileupload(
+	$('#fileupload').fileupload(
         'option',
         'redirect',
         window.location.href.replace(
             /\/[^\/]*$/,
-            '/cors/result.html?%s'
+            '/static/jQuery-File-Upload/cors/result.html?%s'
         )
     );
-      $('#fileupload').fileupload('option', {
+
+    $('#fileupload').fileupload('option', {
 		  formData: [
                     { name: "csrfmiddlewaretoken", value: "{{ csrf_token }}"}
                 ],
+		  maxNumberOfFiles: {{ maxnumberoffiles }},
           maxFileSize: {{ maxfilesize }},
           minFileSize: {{ minfilesize }},
-          acceptFileTypes: /(\.|\/)(gif|jpe?g|png)$/i
-      });
+          acceptFileTypes: /(\.|\/)(gif|jpe?g|png)$/i,
+		  
+     });
 
-	 });
-    </script>
+     $('#fileupload').each(function () {
+            var that = this;
+            $.getJSON(this.action, function (result) {
+                if (result && result.length) {
+                    $(that).fileupload('option', 'done')
+                        .call(that, null, {result: result});
+                }
+            });
+     });
 
-<!-- The XDomainRequest Transport is included for cross-domain file deletion for IE8+ -->
-<!--[if gte IE 8]><script src="js/cors/jquery.xdr-transport.js"></script><![endif]-->
+	$('#fileupload').fileupload({
+	  dataType: 'iframejson',
+	 converters: {
+		 'html iframejson': function(htmlEncodedJson) {
+			 return $.parseJSON($('<div/>').html(htmlEncodedJson).text());
+		 },
+		'iframe iframejson': function (iframe) {
+			 return $.parseJSON(iframe.find('body').text());
+		 }
+	}
+	});
+
+});
+</script>
 </body> 
 </html>
